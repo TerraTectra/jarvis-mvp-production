@@ -1,0 +1,6 @@
+"""
+Модуль для работы с Telegram-ботом.
+"""
+from .telegram_bot import run_bot
+
+__all__ = ['run_bot']
