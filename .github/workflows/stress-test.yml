@@ -1,0 +1,81 @@
+name: Stress Tests
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+  schedule:
+    # Run daily at 3 AM UTC (6 AM Moscow Time)
+    - cron: '0 3 * * *'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'tests/run_stress_test.js'
+      - '.github/workflows/stress-test.yml'
+
+jobs:
+  stress-test:
+    name: Run Stress Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Create reports directory
+      run: mkdir -p tests/reports
+    
+    - name: Run stress tests
+      id: stress-test
+      continue-on-error: true  # Continue even if tests fail
+      run: |
+        node tests/run_stress_test.js
+        echo "status=$?" >> $GITHUB_OUTPUT
+    
+    - name: Upload test report
+      uses: actions/upload-artifact@v3
+      with:
+        name: stress-test-report
+        path: tests/reports/*.json
+        retention-days: 7
+    
+    - name: Notify Telegram
+      if: always()
+      env:
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN || '' }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_TO || '' }}
+      run: |
+        # Skip if missing required secrets
+        if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+          echo "Skipping Telegram notification: Missing required secrets"
+          exit 0
+        fi
+
+        # Set emoji based on job status
+        if [ "${{ job.status }}" = "success" ]; then
+          EMOJI="✅"
+          STATUS="SUCCESS"
+        else
+          EMOJI="❌"
+          STATUS="FAILED"
+        fi
+
+        # Prepare message
+        MESSAGE="${EMOJI} *Jarvis: Stress Test Results*"
+        MESSAGE+="%0A%0A"
+        MESSAGE+="*Status*: ${STATUS}%0A"
+        MESSAGE+="*Workflow*: ${{ github.workflow }}%0A"
+        MESSAGE+="*Run*: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})%0A%0A"
+        MESSAGE+="[View Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs/${{ github.run_id }})"
+
+        # Send message
+        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
+          -d chat_id="$TELEGRAM_CHAT_ID" \
+          -d parse_mode="Markdown" \
+          -d text="$MESSAGE"
