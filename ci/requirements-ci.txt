@@ -1,0 +1,30 @@
+# CI/CD Pipeline Dependencies
+# This file lists all Python dependencies required for the CI/CD pipeline
+
+# Core dependencies
+python-dotenv>=0.19.0  # For loading environment variables
+requests>=2.26.0       # For making HTTP requests (used by telegram_notifier)
+
+# Linting and code quality
+black>=21.12b0         # Code formatter
+isort>=5.10.1          # Import sorter
+ruff>=0.0.237          # Fast Python linter
+mypy>=0.930            # Static type checker
+
+# Testing
+pytest>=7.0.0          # Test framework
+pytest-cov>=3.0.0      # Coverage reporting
+
+# Documentation
+sphinx>=4.4.0          # Documentation generator
+sphinx-rtd-theme>=1.0.0 # ReadTheDocs theme
+
+# Utilities
+colorama>=0.4.4        # Cross-platform colored terminal text
+python-telegram-bot>=13.7  # For sending Telegram notifications
+
+# For visualization
+graphviz>=0.20.0        # For pipeline visualization
+
+# For Docker integration
+docker>=6.0.0           # Docker SDK for Python

@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://kwork.ru"
 API_URL = f"{BASE_URL}/api"
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/91.0.4472.124 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Accept-Language": "ru-RU,ru;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+    "Connection": "keep-alive"
 }
 
 # Кэш для хранения сессии
@@ -126,11 +127,16 @@ async def _parse_kwork_html(limit: int) -> List[Dict[str, Any]]:
     Returns:
         Список заказов
     """
+    # Используем существующую сессию или создаем новую с контекстным менеджером
     session = get_session()
-    url = f"{BASE_URL}/projects"
-    
     try:
-        async with session.get(url, timeout=10) as response:
+        url = f"{BASE_URL}/projects"
+        print(f"🔍 Парсинг страницы: {url}")
+        print(f"📝 Заголовки запроса: {HEADERS}")
+        print("🔓 Отключена проверка SSL (режим отладки)")
+        
+        # Используем существующую сессию для запроса
+        async with session.get(url, timeout=30, ssl=False) as response:
             if response.status != 200:
                 logger.warning(f"Не удалось загрузить страницу: {response.status}")
                 return []
@@ -139,16 +145,34 @@ async def _parse_kwork_html(limit: int) -> List[Dict[str, Any]]:
             soup = BeautifulSoup(html, 'html.parser')
             
             orders = []
-            for card in soup.select('.card.wt-break-word')[:limit]:
-                title_elem = card.select_one('.wants-card__title a')
+            # Обновленные селекторы для новой версии Kwork
+            for card in soup.select('.card__content'):
+                if len(orders) >= limit:
+                    break
+                    
+                # Заголовок и ID заказа
+                title_elem = card.select_one('a[href^="/projects/"] h2')
                 if not title_elem:
                     continue
                     
                 title = title_elem.get_text(strip=True)
-                order_id = card.get('data-id', '')
-                description = card.select_one('.wants-card__description-text')
-                price = card.select_one('.wants-card__price')
-                category = card.select_one('.wants-card__category a')
+                
+                # ID заказа из ссылки
+                link_elem = card.select_one('a[href^="/projects/"]')
+                order_id = link_elem['href'].split('/')[-1] if link_elem and 'href' in link_elem.attrs else ''
+                
+                # Описание
+                description = card.select_one('.wants-card__description-text, .breakwords')
+                
+                # Бюджет
+                price = card.select_one('.wants-card__price, .wants-card__price.higher')
+                
+                # Категория
+                category = card.select_one('a[href^="/projects/"] + div a')
+                
+                # Пропускаем без ID
+                if not order_id:
+                    continue
                 
                 orders.append({
                     "id": order_id,

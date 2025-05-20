@@ -1,0 +1,100 @@
+"""Test configuration and fixtures."""
+import os
+import sys
+from pathlib import Path
+from typing import AsyncGenerator, Generator
+
+import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+)
+
+# Set test environment variables before any imports
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ["ALGORITHM"] = "HS256"
+
+# Now import the database models and other dependencies
+from src.database import Base, engine, SessionLocal
+from src.database.kwork_crud import KworkCRUD
+
+# Add the project root to the Python path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+@pytest.fixture(scope="session")
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """Create an instance of the default event loop for the test session."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    loop.close()
+
+@pytest.fixture(scope="session")
+async def async_engine() -> AsyncGenerator[AsyncEngine, None]:
+    """Create and configure a SQLAlchemy async engine for testing."""
+    # Create all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    yield engine
+    
+    # Drop all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+@pytest.fixture
+async def db_session(async_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
+    """Create a new database session for testing."""
+    async with async_engine.connect() as conn:
+        # Begin a transaction
+        transaction = await conn.begin()
+        
+        # Create a session
+        TestingSessionLocal = async_sessionmaker(
+            autocommit=False, autoflush=False, bind=conn
+        )
+        session = TestingSessionLocal()
+        
+        try:
+            yield session
+        finally:
+            await session.close()
+            await transaction.rollback()
+
+@pytest.fixture
+def db_crud(db_session: AsyncSession) -> KworkCRUD:
+    """Create a KworkCRUD instance with a test session."""
+    return KworkCRUD(db_session)
+
+@pytest.fixture
+def test_client():
+    """Create a test client for the FastAPI app."""
+    from fastapi.testclient import TestClient
+    from src.api import app
+    
+    # Override the database dependency
+    from src.dependencies import get_db
+    
+    # Create a test database session
+    from src.database import SessionLocal
+    
+    def override_get_db():
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+    
+    # Override the dependency
+    app.dependency_overrides[get_db] = override_get_db
+    
+    # Create test client
+    with TestClient(app) as client:
+        yield client
+    
+    # Clean up
+    app.dependency_overrides.clear()

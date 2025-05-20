@@ -2,8 +2,9 @@
 CRUD-операции для работы с базой данных.
 """
 from datetime import datetime
-from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
+from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import models
 
@@ -96,45 +97,56 @@ def get_order_replies(
         .all()
     )
 
-def get_stats(
-    db: Session,
+async def get_stats(
+    db: AsyncSession,
     days: int = 7
 ) -> Dict[str, Any]:
     """Получает статистику за указанный период."""
-    from sqlalchemy import func, and_
+    from sqlalchemy import func, select, and_, or_
     from datetime import datetime, timedelta
     
+    async def _get_count(q):
+        result = await db.execute(select(func.count()).select_from(q.subquery()))
+        return result.scalar() or 0
+    
+    # Рассчитываем дату начала периода
     start_date = datetime.utcnow() - timedelta(days=days)
     
-    # Общее количество заказов
-    total_orders = db.query(func.count(models.Order.id)).scalar()
+    # Получаем общее количество пользователей
+    total_users = await _get_count(select(models.User.id))
     
-    # Количество заказов за период
-    recent_orders = (
-        db.query(func.count(models.Order.id))
-        .filter(models.Order.created_at >= start_date)
-        .scalar()
+    # Получаем общее количество заказов
+    total_orders = await _get_count(select(models.Order.id))
+    
+    # Получаем количество отправленных откликов
+    total_replies = await _get_count(select(models.Reply.id))
+    
+    # Получаем количество успешных и неудачных откликов
+    successful_replies = await _get_count(
+        select(models.Reply.id).where(models.Reply.status == 'success')
     )
     
-    # Количество отправленных откликов
-    sent_replies = (
-        db.query(func.count(models.Reply.id))
-        .filter(models.Reply.sent == True)  # noqa
-        .scalar()
+    failed_replies = await _get_count(
+        select(models.Reply.id).where(models.Reply.status == 'error')
     )
     
-    # Количество ошибок
-    errors = (
-        db.query(func.count(models.SystemLog.id))
-        .filter(models.SystemLog.level == "ERROR")
-        .filter(models.SystemLog.created_at >= start_date)
-        .scalar()
+    # Получаем время последней проверки
+    last_check_log = await db.execute(
+        select(models.SystemLog)
+        .where(models.SystemLog.message.like('%проверка завершена%'))
+        .order_by(models.SystemLog.created_at.desc())
+        .limit(1)
     )
+    last_check_log = last_check_log.scalar_one_or_none()
+    
+    last_check = last_check_log.created_at.strftime('%d.%m.%Y %H:%M:%S') if last_check_log else 'никогда'
     
     return {
-        "total_orders": total_orders or 0,
-        "recent_orders": recent_orders or 0,
-        "sent_replies": sent_replies or 0,
-        "errors_last_days": errors or 0,
-        "period_days": days
+        'total_users': total_users,
+        'total_orders': total_orders,
+        'total_replies': total_replies,
+        'successful_replies': successful_replies,
+        'failed_replies': failed_replies,
+        'last_check': last_check,
+        'period_days': days
     }

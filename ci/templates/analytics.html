@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">CI/CD Analytics</h1>
+        <div class="flex space-x-4">
+            <button onclick="loadReport('daily')" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                Daily Report
+            </button>
+            <button onclick="loadReport('weekly')" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                Weekly Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <p class="mt-2 text-gray-600">Loading analytics data...</p>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboard" class="hidden">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-gray-500 text-sm font-medium">Total Runs</h3>
+                        <p id="total-runs" class="text-2xl font-semibold text-gray-800">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-gray-500 text-sm font-medium">Successful</h3>
+                        <p id="successful-runs" class="text-2xl font-semibold text-gray-800">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-red-100 text-red-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-gray-500 text-sm font-medium">Failed</h3>
+                        <p id="failed-runs" class="text-2xl font-semibold text-gray-800">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-gray-500 text-sm font-medium">Avg. Duration</h3>
+                        <p id="avg-duration" class="text-2xl font-semibold text-gray-800">0s</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Success Rate Chart -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Success Rate</h3>
+                <div id="success-rate-chart" class="h-64"></div>
+            </div>
+            
+            <!-- Duration Trend Chart -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Duration Trend</h3>
+                <div id="duration-trend-chart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Error Distribution -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Error Distribution</h3>
+                <div id="error-distribution-chart" class="h-64"></div>
+            </div>
+            
+            <!-- Daily Runs -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Daily Runs</h3>
+                <div id="daily-runs-chart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- Top Errors Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800">Top Errors</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Occurred</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-errors-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentReportType = 'daily';
+    let reportData = null;
+
+    // Load report when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        loadReport('daily');
+    });
+
+    // Load report data
+    async function loadReport(type) {
+        currentReportType = type;
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
+        
+        try {
+            const response = await fetch(`/ci/api/analytics/${type}`, {
+                headers: {
+                    'X-Admin-Token': new URLSearchParams(window.location.search).get('token')
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load report');
+            }
+            
+            reportData = await response.json();
+            updateDashboard();
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error loading report:', error);
+            alert('Failed to load report. Please try again.');
+            document.getElementById('loading').classList.add('hidden');
+        }
+    }
+
+    // Update dashboard with report data
+    function updateDashboard() {
+        if (!reportData) return;
+
+        // Update summary cards
+        document.getElementById('total-runs').textContent = reportData.total_runs || 0;
+        document.getElementById('successful-runs').textContent = reportData.successful || 0;
+        document.getElementById('failed-runs').textContent = reportData.failed || 0;
+        document.getElementById('avg-duration').textContent = 
+            reportData.avg_duration_seconds ? `${reportData.avg_duration_seconds.toFixed(2)}s` : 'N/A';
+
+        // Update charts
+        updateCharts();
+        
+        // Update top errors table
+        updateTopErrorsTable();
+    }
+
+    // Update charts with report data
+    function updateCharts() {
+        // Success Rate Gauge
+        const successRate = reportData.success_rate || 0;
+        Plotly.newPlot('success-rate-chart', [{
+            type: 'indicator',
+            mode: 'gauge+number',
+            value: successRate,
+            number: { suffix: '%' },
+            gauge: {
+                axis: { range: [0, 100] },
+                bar: { color: '#3B82F6' },
+                steps: [
+                    { range: [0, 70], color: '#EF4444' },
+                    { range: [70, 90], color: '#F59E0B' },
+                    { range: [90, 100], color: '#10B981' }
+                ]
+            }
+        }], {
+            margin: { t: 0, b: 0, l: 30, r: 30 }
+        });
+
+        // Daily Runs Chart
+        if (reportData.daily_metrics) {
+            const days = Object.keys(reportData.daily_metrics);
+            const successful = days.map(day => reportData.daily_metrics[day].successful || 0);
+            const failed = days.map(day => reportData.daily_metrics[day].failed || 0);
+            
+            Plotly.newPlot('daily-runs-chart', [{
+                x: days,
+                y: successful,
+                name: 'Successful',
+                type: 'bar',
+                marker: { color: '#10B981' }
+            }, {
+                x: days,
+                y: failed,
+                name: 'Failed',
+                type: 'bar',
+                marker: { color: '#EF4444' }
+            }], {
+                barmode: 'stack',
+                margin: { t: 0, b: 30, l: 40, r: 10 },
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Number of Runs' }
+            });
+        }
+
+        // Error Distribution (Pie Chart)
+        if (reportData.error_distribution) {
+            const errorTypes = Object.keys(reportData.error_distribution);
+            const errorCounts = errorTypes.map(type => reportData.error_distribution[type]);
+            
+            Plotly.newPlot('error-distribution-chart', [{
+                labels: errorTypes,
+                values: errorCounts,
+                type: 'pie',
+                textinfo: 'label+percent',
+                textposition: 'inside',
+                hoverinfo: 'label+value+percent',
+                hole: 0.4,
+                marker: {
+                    colors: ['#EF4444', '#F59E0B', '#3B82F6', '#10B981', '#8B5CF6']
+                }
+            }], {
+                margin: { t: 0, b: 30, l: 30, r: 30 },
+                showlegend: false
+            });
+        }
+    }
+
+    // Update top errors table
+    function updateTopErrorsTable() {
+        const tbody = document.getElementById('top-errors-body');
+        tbody.innerHTML = '';
+
+        if (!reportData.top_errors || Object.keys(reportData.top_errors).length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td colspan="3" class="px-6 py-4 text-center text-gray-500">
+                    No errors found in the selected period.
+                </td>`;
+            tbody.appendChild(tr);
+            return;
+        }
+
+        Object.entries(reportData.top_errors).forEach(([error, count]) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    ${error}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                        ${count}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    Just now
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Refresh data
+    function refreshData() {
+        loadReport(currentReportType);
+    }
+</script>
+{% endblock %}

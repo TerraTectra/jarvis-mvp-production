@@ -1,18 +1,25 @@
 """
-Модуль для работы с базой данных.
+Database module for the application.
 """
-from .session import Base, engine, SessionLocal
+from .session import (
+    Base,
+    engine,
+    async_session,
+    SQLALCHEMY_DATABASE_URL,
+    get_db,
+)
 
-# Импортируем модели, чтобы Base их зарегистрировал
+# Import models to ensure they are registered with Base
 from . import models  # noqa
 
-# Создаем таблицы
-Base.metadata.create_all(bind=engine)
+__all__ = [
+    "Base",
+    "engine",
+    "async_session",
+    "SQLALCHEMY_DATABASE_URL",
+    "get_db",
+    "models",
+]
 
-def get_db():
-    """Генератор сессий базы данных."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# For backward compatibility
+SessionLocal = None  # Deprecated, use async_session instead

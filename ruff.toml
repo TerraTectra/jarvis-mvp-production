@@ -1,0 +1,313 @@
+# Enable all available rules by default
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "C4",  # flake8-comprehensions (additional rules)
+    "EM",  # flake8-errmsg
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "G",   # flake8-logging-format
+    "PGH", # pygrep-hooks
+    "PIE", # flake8-pie
+    "T10", # flake8-debugger
+    "T20", # flake8-print
+    "TCH", # flake8-type-checking
+    "N",   # pep8-naming
+    "Q",   # flake8-quotes
+    "RUF", # Ruff-specific rules
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "UP",  # pyupgrade
+    "YTT", # flake8-2020
+    "FBT", # flake8-boolean-trap
+    "A",   # flake8-builtins
+    "COM", # flake8-commas
+    "C90", # mccabe
+    "DTZ", # flake8-datetimez
+    "TCH", # flake8-type-checking
+    "ARG", # flake8-unused-arguments
+    "PTH", # flake8-use-pathlib
+    "RSE", # flake8-raise
+    "RET", # flake8-return
+    "SLF", # flake8-self
+    "SLOT", # flake8-slots
+    "TID252", # flake8-tidy-imports
+    "TRY", # tryceratops
+    "NPY", # NumPy-specific rules
+    "PD",  # pandas-specific rules
+    "PGH", # pygrep-hooks
+    "PL",  # Pylint
+    "PT",  # pytest-style
+    "PTH", # flake8-use-pathlib
+    "RUF", # Ruff-specific rules
+    "S",   # flake8-bandit
+    "TID", # flake8-tidy-imports
+    "UP",  # pyupgrade
+    "W",   # pycodestyle warnings
+    "YTT", # flake8-2020
+]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = [
+    "A", "ARG", "B", "C4", "C90", "COM", "DTZ", "E", "EM", "F", "FBT", "G", "I",
+    "ICN", "ISC", "N", "PGH", "PIE", "PL", "PT", "PTH", "Q", "RSE", "RET", "RUF",
+    "S", "SIM", "SLF", "SLOT", "T10", "T20", "TCH", "TID", "TRY", "UP", "W", "YTT"
+]
+
+# Exclude common directories
+# Note: These are also excluded in pyproject.toml for black and isort
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".tox",
+    ".venv",
+    "_build",
+    "build",
+    "dist",
+    "migrations",
+    "venv",
+    "ci/logs",
+    ".github",
+]
+
+# Allow unused variables when they are prefixed with an underscore
+unused-variable-prefix = "_"
+
+# Maximum line length
+line-length = 88
+
+# Allow autofix to make changes that could potentially break the code.
+unsafe-fixes = false
+
+# Enable pyupgrade rules
+# This will automatically upgrade code to use modern Python features
+upgrade = true
+
+# Enable isort rules
+isort = { known-first-party = ["src"] }
+
+# Enable flake8-bugbear rules
+# These are opinionated warnings about code that may be a bug or a problem
+bugbear = true
+
+# Enable flake8-builtins rules
+# These check for shadowing of Python builtins
+builtins = true
+
+# Enable flake8-comprehensions rules
+# These encourage using more efficient comprehensions and generator expressions
+comprehensions = true
+
+# Enable flake8-errmsg rules
+# These check for error messages that don't follow best practices
+errmsg = true
+
+# Enable flake8-implicit-str-concat rules
+# These check for implicit string concatenation
+implicit-str-concat = true
+
+# Enable flake8-import-conventions rules
+# These check for consistent import aliases
+import-conventions = {
+    "numpy" = "np",
+    "pandas" = "pd",
+    "matplotlib.pyplot" = "plt",
+    "tensorflow" = "tf",
+    "tensorflow.keras" = "keras",
+    "tensorflow.keras.layers" = "layers",
+    "tensorflow.keras.models" = "models",
+    "tensorflow.keras.optimizers" = "optimizers",
+    "tensorflow.keras.callbacks" = "callbacks",
+    "tensorflow.keras.utils" = "keras_utils",
+    "tensorflow.keras.preprocessing" = "preprocessing",
+    "tensorflow.keras.applications" = "applications",
+    "tensorflow.keras.datasets" = "datasets",
+    "tensorflow.keras.wrappers" = "wrappers",
+    "tensorflow.keras.regularizers" = "regularizers",
+    "tensorflow.keras.constraints" = "constraints",
+    "tensorflow.keras.initializers" = "initializers",
+    "tensorflow.keras.activations" = "activations",
+    "tensorflow.keras.losses" = "losses",
+    "tensorflow.keras.metrics" = "metrics",
+    "tensorflow.keras.backend" = "K",
+}
+
+# Enable flake8-logging-format rules
+# These check for issues with logging format strings
+logging-format = true
+
+# Enable flake8-pie rules
+# These are opinionated rules about Python code style
+pie = true
+
+# Enable flake8-print rules
+# These check for print statements that should be logging calls
+print = true
+
+# Enable flake8-quotes rules
+# These check for consistent quote usage
+quotes = true
+
+# Enable flake8-raise rules
+# These check for raise statements that could be more specific
+raise = true
+
+# Enable flake8-return rules
+# These check for return statements that could be simplified
+return = true
+
+# Enable flake8-self rules
+# These check for methods that could be functions
+self = true
+
+# Enable flake8-slots rules
+# These check for classes that could use __slots__
+slots = true
+
+# Enable flake8-tidy-imports rules
+# These check for imports that could be more specific
+tidy-imports = true
+
+# Enable tryceratops rules
+# These check for try/except blocks that could be improved
+tryceratops = true
+
+# Enable NumPy-specific rules
+numpy = true
+
+# Enable pandas-specific rules
+pandas = true
+
+# Enable Pylint rules
+pylint = true
+
+# Enable pytest-style rules
+pytest = true
+
+# Enable flake8-use-pathlib rules
+pathlib = true
+
+# Enable Ruff-specific rules
+ruff = true
+
+# Enable flake8-simplify rules
+# These check for code that could be simplified
+simplify = true
+
+# Enable flake8-tidy-imports rules
+# These check for imports that could be more specific
+tidy-imports = true
+
+# Enable pyupgrade rules
+# These check for code that could be updated to use newer Python features
+upgrade = true
+
+# Enable flake8-2020 rules
+# These check for code that may not work in Python 3.9+
+python-version = "3.9"
+
+# Enable flake8-boolean-trap rules
+# These check for boolean parameters that could be enums or more specific types
+boolean-trap = true
+
+# Enable flake8-commas rules
+# These check for consistent trailing commas
+commas = true
+
+# Enable mccabe complexity checking
+mccabe = { max-complexity = 10 }
+
+# Enable flake8-datetimez rules
+# These check for naive datetime objects
+datetimez = true
+
+# Enable flake8-type-checking rules
+type-checking = true
+
+# Enable flake8-unused-arguments rules
+unused-arguments = true
+
+# Enable flake8-raise rules
+# These check for raise statements that could be more specific
+raise = true
+
+# Enable flake8-return rules
+# These check for return statements that could be simplified
+return = true
+
+# Enable flake8-self rules
+# These check for methods that could be functions
+self = true
+
+# Enable flake8-slots rules
+# These check for classes that could use __slots__
+slots = true
+
+# Enable flake8-tidy-imports rules
+# These check for imports that could be more specific
+tidy-imports = true
+
+# Enable tryceratops rules
+# These check for try/except blocks that could be improved
+tryceratops = true
+
+# Enable NumPy-specific rules
+numpy = true
+
+# Enable pandas-specific rules
+pandas = true
+
+# Enable Pylint rules
+pylint = true
+
+# Enable pytest-style rules
+pytest = true
+
+# Enable flake8-use-pathlib rules
+pathlib = true
+
+# Enable Ruff-specific rules
+ruff = true
+
+# Enable flake8-simplify rules
+# These check for code that could be simplified
+simplify = true
+
+# Enable flake8-tidy-imports rules
+# These check for imports that could be more specific
+tidy-imports = true
+
+# Enable pyupgrade rules
+# These check for code that could be updated to use newer Python features
+upgrade = true
+
+# Enable flake8-2020 rules
+# These check for code that may not work in Python 3.9+
+python-version = "3.9"
+
+# Enable flake8-boolean-trap rules
+# These check for boolean parameters that could be enums or more specific types
+boolean-trap = true
+
+# Enable flake8-commas rules
+# These check for consistent trailing commas
+commas = true
+
+# Enable mccabe complexity checking
+mccabe = { max-complexity = 10 }
+
+# Enable flake8-datetimez rules
+# These check for naive datetime objects
+datetimez = true
+
+# Enable flake8-type-checking rules
+type-checking = true
+
+# Enable flake8-unused-arguments rules
+unused-arguments = true

@@ -1,0 +1,17 @@
+2025-05-20 03:04:07,985 - src.bot - DEBUG - Initializing Telegram bot module...
+2025-05-20 03:04:07,985 - src.bot - DEBUG - Initializing Telegram bot module...
+2025-05-20 03:04:08,347 - src.bot - WARNING - Telegram bot is not available: No module named 'nest_asyncio'
+2025-05-20 03:04:08,347 - src.bot - WARNING - Telegram bot is not available: No module named 'nest_asyncio'
+2025-05-20 03:04:08,347 - src.kwork.service - WARNING - Telegram bot is not available. Notifications will be logged to console only.
+Traceback (most recent call last):
+  File "D:\VSC\Jarvis_MVP_Release\test_kwork_processing.py", line 227, in <module>
+    asyncio.run(test_order_processing())
+  File "C:\Program Files\Python310\lib\asyncio\runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "C:\Program Files\Python310\lib\asyncio\base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "D:\VSC\Jarvis_MVP_Release\test_kwork_processing.py", line 123, in test_order_processing
+    print("\n=== \U0001f680 Starting order processing test ===\n")
+  File "C:\Program Files\Python310\lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 6: character maps to <undefined>

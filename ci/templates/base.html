@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis CI/CD Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="/static/css/auth.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: calc(100vh - 4rem);
+        }
+        .content {
+            min-height: calc(100vh - 4rem);
+        }
+        .user-menu {
+            position: relative;
+            display: inline-block;
+        }
+        .user-menu-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #f9fafb;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 0.375rem;
+            overflow: hidden;
+        }
+        .user-menu:hover .user-menu-content {
+            display: block;
+        }
+        .user-menu-item {
+            color: #4b5563;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            display: block;
+            text-align: left;
+            width: 100%;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .user-menu-item:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 shadow">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Jarvis CI/CD Dashboard</h1>
+            <div class="flex items-center space-x-4">
+                <span id="current-time" class="text-sm"></span>
+                <div class="user-menu">
+                    <button class="flex items-center space-x-2 bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded-md text-sm">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="username-display">Пользователь</span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="user-menu-content">
+                        <button onclick="logout()" class="user-menu-item text-left w-full">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Выйти
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 bg-white shadow-lg">
+            <nav class="p-4">
+                <div class="mb-8">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">Navigation</h2>
+                    <ul>
+                        <li class="mb-2">
+                            <a href="/ci/ui" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 rounded">
+                                🏠 Dashboard
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="/ci/ui/pipelines" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 rounded">
+                                🔄 Pipelines
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="/ci/ui/analytics" class="block px-4 py-2 bg-blue-50 text-blue-600 rounded font-medium">
+                                📊 Analytics
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="/ci/ui/settings" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 rounded">
+                                ⚙️ Settings
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mt-8">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">Quick Actions</h2>
+                    <button onclick="runPipeline()" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mb-2 flex items-center justify-center">
+                        <span class="mr-2">▶️</span> Run Pipeline
+                    </button>
+                    <button onclick="refreshData()" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center justify-center">
+                        <span class="mr-2">🔄</span> Refresh Data
+                    </button>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content flex-1 p-8">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString();
+        }
+        
+        // Update last updated time
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById('last-updated').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+        
+        // Refresh data
+        function refreshData() {
+            updateLastUpdated();
+            window.location.reload();
+        }
+        
+        // Run pipeline
+        function runPipeline() {
+            if (confirm('Are you sure you want to run the pipeline?')) {
+                fetch('/ci/api/pipeline/run', {
+                    method: 'POST',
+                    headers: {
+                        'X-Admin-Token': new URLSearchParams(window.location.search).get('token')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Pipeline started successfully!');
+                    } else {
+                        alert('Failed to start pipeline: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to start pipeline');
+                });
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+        });
+    </script>
+</body>
+</html>

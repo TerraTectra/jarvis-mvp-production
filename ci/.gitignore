@@ -1,0 +1,40 @@
+# Logs
+logs/
+*.log
+
+# Local development files
+*.py[cod]
+*$py.class
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Local development artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Docker
+!Dockerfile
+!docker-compose*.yml
+.docker/
+
+# Local development
+.venv/
+venv/
+ENV/
+
+# System Files
+.DS_Store
+Thumbs.db

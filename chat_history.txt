@@ -1,0 +1,83 @@
+# Диалог по настройке и запуску Jarvis MVP
+
+## Начало работы
+
+### Проверка структуры проекта
+```
+Проверяем содержимое папки src:
+
+D:\VSC\Jarvis_MVP_Release\src\
+├── __init__.py
+├── api.py
+├── main.py
+├── automation\
+│   └── auto_responder.py
+├── bot\
+│   ├── __init__.py
+│   └── telegram_bot.py
+├── database\
+│   ├── __init__.py
+│   ├── crud.py
+│   ├── models.py
+│   └── session.py
+├── integrations\
+│   ├── __init__.py
+│   ├── kwork.py
+│   └── kwork_submission.py
+├── notifications\
+│   ├── __init__.py
+│   └── notifier.py
+├── templates\
+│   └── form.html
+└── utils\
+    └── __init__.py
+```
+
+### Исправление импортов
+
+1. В `src/api.py` заменены относительные импорты на абсолютные
+2. В `src/main.py` обновлены импорты и добавлена функция `main()`
+3. В `src/automation/auto_responder.py` исправлены импорты
+4. В `src/database/session.py` и `src/database/models.py` исправлены импорты
+5. Создан `src/notifications/telegram.py` для работы с Telegram API
+6. Исправлены импорты в `src/notifications/notifier.py`
+
+### Установка зависимостей
+
+Установлены следующие пакеты:
+- spacy
+- aiohttp
+- beautifulsoup4
+- python-multipart
+
+### Запуск приложения
+
+Приложение успешно запущено:
+- API сервер: http://127.0.0.1:8000
+- Документация: http://127.0.0.1:8000/docs
+
+## Команды для запуска
+
+### Запуск API сервера
+```bash
+python app.py
+```
+
+### Запуск в автоматическом режиме
+```bash
+python app.py --auto
+```
+
+### С настройкой интервала проверки (в секундах)
+```bash
+python app.py --auto --interval 60
+```
+
+### С фильтрацией по ключевым словам
+```bash
+python app.py --auto --keywords "python,автоматизация"
+```
+
+## Заключение
+
+Приложение успешно настроено и готово к использованию. Все компоненты работают корректно, API доступен по указанным адресам.

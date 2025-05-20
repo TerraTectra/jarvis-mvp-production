@@ -22,7 +22,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/kwork-scraper",
-    packages=find_packages(where=".", exclude=["tests", "tests.*"]),
+    packages=find_packages(where="src", exclude=["tests", "tests.*"]),
+    package_dir={"": "src"},
     package_data={
         "": ["*.json", "*.txt", "*.yaml", "*.yml"],
     },

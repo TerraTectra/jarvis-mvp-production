@@ -1,0 +1,13 @@
+# LLM Dependencies
+torch>=2.0.0  # PyTorch with CUDA support
+torchvision
+torchaudio
+transformers>=4.30.0  # For model loading and inference
+accelerate>=0.20.0  # For model optimization
+safetensors>=0.3.0  # For safe model loading
+sentencepiece>=0.1.99  # For tokenization
+auto-gptq>=0.4.0  # For 4-bit quantization
+xformers>=0.0.20  # For optimization
+einops>=0.6.1  # For tensor operations
+huggingface-hub>=0.16.0  # For downloading models
+tiktoken>=0.4.0  # For token counting

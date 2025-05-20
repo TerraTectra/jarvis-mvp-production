@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from integrations.kwork_parser import KworkParser, KworkPriceParser
+from src.integrations.kwork_parser import KworkParser, KworkPriceParser
 
 class TestKworkParser(unittest.TestCase):
     def setUp(self):
