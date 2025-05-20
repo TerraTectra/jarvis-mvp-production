@@ -83,8 +83,9 @@ jobs:
     - name: Run tests with pytest
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        PYTHONPATH: ${{ github.workspace }}
       run: |
-        export PYTHONPATH=$PYTHONPATH:${{ github.workspace }}
+        echo "PYTHONPATH: $PYTHONPATH"
         python -m pytest -v --cov=src --cov-report=xml --cov-report=term-missing
     
     - name: Upload coverage to Codecov
