@@ -1,81 +1,129 @@
-name: Stress Tests
+name: "Jarvis Load Test"
 
 on:
-  workflow_dispatch:  # Allows manual triggering
   schedule:
-    # Run daily at 3 AM UTC (6 AM Moscow Time)
-    - cron: '0 3 * * *'
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'tests/run_stress_test.js'
-      - '.github/workflows/stress-test.yml'
+    - cron: '0 3 * * *'  # Run daily at 03:00 UTC
+  workflow_dispatch:  # Manual trigger
+    inputs:
+      environment:
+        description: 'Environment to test (staging/prod)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+
+env:
+  NODE_VERSION: '20.x'
+  NODE_ENV: test
+  CI: true
+  API_URL: http://localhost:3000      # Default, overridden below
+  API_KEY: local-dev-key
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
 jobs:
-  stress-test:
-    name: Run Stress Tests
+  load-test:
     runs-on: ubuntu-latest
-    
+    container:
+      image: node:20
+      options: --gpus all  # Enable GPU monitoring if needed
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm install
-    
-    - name: Create reports directory
-      run: mkdir -p tests/reports
-    
-    - name: Run stress tests
-      id: stress-test
-      continue-on-error: true  # Continue even if tests fail
-      run: |
-        node tests/run_stress_test.js
-        echo "status=$?" >> $GITHUB_OUTPUT
-    
-    - name: Upload test report
-      uses: actions/upload-artifact@v3
-      with:
-        name: stress-test-report
-        path: tests/reports/*.json
-        retention-days: 7
-    
-    - name: Notify Telegram
-      if: always()
-      env:
-        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN || '' }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_TO || '' }}
-      run: |
-        # Skip if missing required secrets
-        if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
-          echo "Skipping Telegram notification: Missing required secrets"
-          exit 0
-        fi
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-        # Set emoji based on job status
-        if [ "${{ job.status }}" = "success" ]; then
-          EMOJI="✅"
-          STATUS="SUCCESS"
-        else
-          EMOJI="❌"
-          STATUS="FAILED"
-        fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-        # Prepare message
-        MESSAGE="${EMOJI} *Jarvis: Stress Test Results*"
-        MESSAGE+="%0A%0A"
-        MESSAGE+="*Status*: ${STATUS}%0A"
-        MESSAGE+="*Workflow*: ${{ github.workflow }}%0A"
-        MESSAGE+="*Run*: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})%0A%0A"
-        MESSAGE+="[View Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs/${{ github.run_id }})"
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            nvidia-utils-515 nvidia-smi htop procps curl
 
-        # Send message
-        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
-          -d chat_id="$TELEGRAM_CHAT_ID" \
-          -d parse_mode="Markdown" \
-          -d text="$MESSAGE"
+      - name: Install Node.js dependencies
+        run: |
+          npm ci
+          npm install -g loadtest
+
+      - name: Configure environment
+        run: |
+          # Set environment variables
+          echo "NODE_ENV=$NODE_ENV" >> $GITHUB_ENV
+          echo "CI=$CI" >> $GITHUB_ENV
+          
+          # Set default environment if not provided
+          if [ -z "${{ github.event.inputs.environment }}" ]; then
+            ENV="staging"
+          else
+            ENV="${{ github.event.inputs.environment }}"
+          fi
+          
+          # Select API credentials by environment
+          if [ "$ENV" = "prod" ]; then
+            echo "API_URL=${{ secrets.PROD_API_URL || env.API_URL }}" >> $GITHUB_ENV
+            echo "API_KEY=${{ secrets.PROD_API_KEY || env.API_KEY }}" >> $GITHUB_ENV
+          else
+            echo "API_URL=${{ secrets.STAGING_API_URL || env.API_URL }}" >> $GITHUB_ENV
+            echo "API_KEY=${{ secrets.STAGING_API_KEY || env.API_KEY }}" >> $GITHUB_ENV
+          fi
+          
+          # Set Telegram credentials if they exist
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> $GITHUB_ENV
+            echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> $GITHUB_ENV
+          else
+            echo "TELEGRAM_BOT_TOKEN=" >> $GITHUB_ENV
+            echo "TELEGRAM_CHAT_ID=" >> $GITHUB_ENV
+          fi
+
+      - name: Create reports directory
+        run: mkdir -p tests/reports
+
+      - name: Run load test
+        id: load-test
+        continue-on-error: true
+        run: |
+          echo "Testing ${{ inputs.environment }}..."
+          echo "API_URL=$API_URL"
+          node tests/load_test.js --url "$API_URL" --key "$API_KEY"
+          if [ -f tests/reports/summary.md ]; then
+            REPORT=$(sed ':a;N;s/\n/ /g;ta' tests/reports/summary.md)
+            echo "report=$REPORT" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Capture GPU metrics
+        if: steps.load-test.conclusion == 'success'
+        run: |
+          nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv > tests/reports/gpu_metrics.csv
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: load-test-report-${{ github.run_id }}
+          path: tests/reports/
+          retention-days: 7
+
+      - name: Send Telegram notification
+        if: always()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Skipping Telegram notification: missing credentials"
+            exit 0
+          fi
+          STATUS="${{ job.status }}"
+          EMOJI="$( [ "$STATUS" = 'success' ] && echo '✅' || echo '❌' )"
+          MESSAGE="${EMOJI} *Jarvis Load Test*: $STATUS\n"
+          MESSAGE+="Environment: ${{ inputs.environment }}\n"
+          MESSAGE+="Commit: ${{ github.sha }}\n"
+          MESSAGE+="Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n"
+          MESSAGE+="Report: ${{ steps.load-test.outputs.report || 'N/A' }}"
+          curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            -d chat_id="$TELEGRAM_CHAT_ID" \
+            -d parse_mode="Markdown" \
+            -d text="$MESSAGE"
