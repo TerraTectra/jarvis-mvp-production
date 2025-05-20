@@ -91,6 +91,8 @@ jobs:
     name: Deploy to Staging
     needs: [test]
     if: github.ref == 'refs/heads/develop' || github.event.inputs.environment == 'staging'
+    env:
+      COMMIT_SHA: ${{ github.sha }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -112,6 +114,18 @@ jobs:
       run: |
         echo "Running smoke tests against staging..."
         # Add your smoke test commands here
+        
+    - name: Trigger snapshot workflow
+      if: success()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'snapshot-staging.yml',
+            ref: 'develop'
+          });
 
   deploy-production:
     name: Deploy to Production

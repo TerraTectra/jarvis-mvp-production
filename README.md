@@ -1,6 +1,27 @@
-# 🚀# 🚀 Jarvis MVP - Production Deployment
+# 🚀 Jarvis MVP - Production Deployment
 
-## 🌟 Особенности
+[![CI/CD](https://github.com/TerraTectra/jarvis-mvp-production/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/TerraTectra/jarvis-mvp-production/actions/workflows/ci-cd.yml)
+[![Monitoring](https://img.shields.io/badge/monitor-grafana-FFA500)](http://localhost:3000)
+[![Telegram](https://img.shields.io/badge/chat-telegram-0088cc)](https://t.me/your_telegram_channel)
+
+## 🛠 CI/CD Pipeline
+
+### Branch Strategy
+- `main` - Production environment (protected)
+- `develop` - Staging environment
+- `feature/*` - Feature branches
+
+### Workflow
+1. Push to `develop` → Auto-deploy to staging
+2. Create PR to `main` → Code review required
+3. Merge to `main` → Manual approval for production deploy
+
+### Monitoring
+- **Prometheus**: Metrics collection
+- **Grafana**: Dashboards and visualization
+- **Telegram Alerts**: Instant notifications
+
+## 🌟 Features
 
 - **Полная автоматизация** - автоответчик, API и бот в одном процессе
 - **Масштабируемость** - готово к работе на облачной платформе
@@ -70,7 +91,36 @@ NOTIFY_ERRORS=true
 - **Railway**: Автоматические обновления и перезапуски
 - **Cron Jobs**: Планировщик задач встроен в приложение
 
-## 📚 Документация
+## 🚀 Quick Start
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone https://github.com/TerraTectra/jarvis-mvp-production.git
+cd jarvis-mvp-production
+
+# Set up Python environment
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+
+# Start the application
+python run.py
+```
+
+### Monitoring Stack
+
+```bash
+# Start monitoring services
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# Access dashboards:
+# - Grafana: http://localhost:3000 (admin/admin)
+# - Prometheus: http://localhost:9090
+```
+
+## 📚 Documentation
 
 - [API Documentation](https://your-railway-url.railway.app/docs)
 - [Telegram Bot Guide](https://core.telegram.org/bots/api)

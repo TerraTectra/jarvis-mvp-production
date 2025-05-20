@@ -1,0 +1,68 @@
+name: Staging Snapshot
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    branches: [develop]
+    types:
+      - completed
+
+jobs:
+  create-snapshot:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Needed to get git history
+    
+    - name: Get current timestamp
+      id: timestamp
+      run: echo "SNAPSHOT_TIMESTAMP=$(date -u +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+    
+    - name: Get commit hash
+      id: commit
+      run: echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+    
+    - name: Create snapshot tag
+      run: |
+        TAG="staging-snapshot-${{ env.SNAPSHOT_TIMESTAMP }}-${{ env.COMMIT_SHA }}"
+        echo "SNAPSHOT_TAG=$TAG" >> $GITHUB_ENV
+        git tag -a "$TAG" -m "Staging snapshot $TAG"
+        git push origin "$TAG"
+    
+    - name: Save environment state
+      run: |
+        mkdir -p .snapshots
+        # Save .env
+        cp .env ".snapshots/${{ env.SNAPSHOT_TAG }}.env"
+        # Save docker-compose config
+        docker-compose config > ".snapshots/${{ env.SNAPSHOT_TAG }}-docker-compose.yml"
+        # Save package versions
+        pip freeze > ".snapshots/${{ env.SNAPSHOT_TAG }}-requirements.txt"
+    
+    - name: Upload snapshot artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: staging-snapshot-${{ env.SNAPSHOT_TAG }}
+        path: |
+          .snapshots/${{ env.SNAPSHOT_TAG }}*
+        retention-days: 7
+    
+    - name: Notify success
+      uses: appleboy/telegram-action@master
+      if: success()
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          ✅ *Staging Snapshot Created*
+          
+          *Tag*: `${{ env.SNAPSHOT_TAG }}`
+          *Commit*: ${{ env.COMMIT_SHA }}
+          *Workflow*: ${{ github.workflow }}
+          
+          [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
