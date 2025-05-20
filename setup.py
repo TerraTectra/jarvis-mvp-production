@@ -22,8 +22,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/kwork-scraper",
-    packages=find_packages(where="src", exclude=["tests", "tests.*"]),
-    package_dir={"": "src"},
+    packages=find_packages(where=".", exclude=["tests", "tests.*"]),
     package_data={
         "": ["*.json", "*.txt", "*.yaml", "*.yml"],
     },
@@ -45,7 +44,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "kwork-scraper=src.cli:cli",
+            "kwork-scraper=integrations.kwork_parser:main",
         ],
     },
     project_urls={
