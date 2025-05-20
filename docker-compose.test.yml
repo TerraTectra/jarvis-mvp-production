@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - SCRAPER_HEADLESS=true
+      - SCRAPER_MAX_PAGES=1
+      - DATABASE_URL=sqlite:////data/test.db
+      - TELEGRAM_ENABLED=false
+    volumes:
+      - test-db-data:/data
+    networks:
+      - test-network
+    # Override the default command to run the scraper once
+    command: python -m src.cli run --max-pages 1
+    # Add healthcheck to verify the container is running
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python -m src.cli run"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Add a test API service if needed
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      - DATABASE_URL=sqlite:////data/test.db
+      - API_ENABLED=true
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - test-db-data:/data
+    networks:
+      - test-network
+    depends_on:
+      - scraper
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-db-data:
+    driver: local

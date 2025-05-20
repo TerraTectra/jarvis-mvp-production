@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kwork-scraper
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/kwork_scraper.db
+      # Uncomment and set these for Telegram notifications
+      # - TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+      # - TELEGRAM_CHAT_ID=your_chat_id
+    working_dir: /app
+    # Uncomment to run the scraper automatically
+    # command: python -m src.cli scrape --max-pages 5 --category web-programming
+    # Or run manually with:
+    # docker-compose run --rm scraper python -m src.cli --help
+
+  # Uncomment to add a database admin UI (like Adminer)
+  # adminer:
+  #   image: adminer:latest
+  #   container_name: kwork-adminer
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - ADMINER_DEFAULT_SERVER=db
+  #   depends_on:
+  #     - db
+
+  # Uncomment to use PostgreSQL instead of SQLite
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: kwork-db
+  #   environment:
+  #     - POSTGRES_USER=kwork
+  #     - POSTGRES_PASSWORD=kwork123
+  #     - POSTGRES_DB=kwork_scraper
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data/
+  #   ports:
+  #     - "5432:5432"
+
+  web-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ci-web-ui
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WEBHOOK_PORT=8000
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-change-me-in-production}
+      - MAIN_BRANCH=${MAIN_BRANCH:-main}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - UI_ADMIN_TOKEN=${UI_ADMIN_TOKEN:-change-me-in-production}
+    restart: unless-stopped
+    command: uvicorn ci.web_ui:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ci-webhook
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WEBHOOK_PORT=9000
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-change-me-in-production}
+      - MAIN_BRANCH=${MAIN_BRANCH:-main}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - UI_ADMIN_TOKEN=${UI_ADMIN_TOKEN:-change-me-in-production}
+    restart: unless-stopped
+    command: uvicorn ci.webhook:app --host 0.0.0.0 --port 9000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Uncomment if using PostgreSQL
+# volumes:
+#   postgres_data:

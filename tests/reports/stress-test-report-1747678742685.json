@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-05-19T18:19:02.685Z",
+  "duration": 82.223,
+  "stats": {
+    "scenariosRun": 12,
+    "scenariosPassed": 12,
+    "scenariosFailed": 0,
+    "errors": [],
+    "successRate": "100.00%"
+  },
+  "rateLimit": {
+    "hits": 12,
+    "limit": 30,
+    "window": "10 minutes"
+  },
+  "errors": [],
+  "recommendations": []
+}

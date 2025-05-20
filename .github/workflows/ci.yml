@@ -1,0 +1,346 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run every day at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to (staging/production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20.x'
+  POETRY_VERSION: '1.5.1'
+  DOCKER_BUILDKIT: 1
+
+# Define job dependencies
+jobs:
+  lint:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade setuptools wheel
+        pip install pre-commit
+        pre-commit install
+    
+    - name: Run pre-commit
+      run: pre-commit run --all-files --show-diff-on-failure
+    
+    - name: Run mypy
+      run: |
+        pip install mypy
+        mypy src tests --strict
+
+  test:
+    name: Run tests
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    
+    services:
+      # Add any required services here (e.g., PostgreSQL, Redis)
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        # Add health checks
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade setuptools wheel
+        pip install -e .[dev]
+    
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=$PYTHONPATH:${{ github.workspace }}" >> $GITHUB_ENV
+      shell: bash
+    
+    - name: Run tests with pytest
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        echo "PYTHONPATH: $PYTHONPATH"
+        python -m pytest -v --cov=src --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage to Codecov
+      if: github.event_name != 'pull_request' && github.event_name != 'schedule'
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  docker:
+    name: Build and test Docker image
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to Docker Hub
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Docker image
+      run: |
+        docker build -t jarvis-mvp-ci-test .
+        docker run --rm jarvis-mvp-ci-test --help
+
+  stress-test:
+    name: Run Stress Tests
+    needs: [deploy]  
+    # Run on schedule, manual trigger, or when workflow_dispatch is triggered
+    if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
+    
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          nvidia-utils-515 nvidia-smi htop procps curl
+        npm ci
+        npm install -g loadtest
+    
+    - name: Configure environment
+      run: |
+        # Set environment variables
+        echo "NODE_ENV=test" >> $GITHUB_ENV
+        echo "CI=true" >> $GITHUB_ENV
+        
+        # Use staging environment for stress tests
+        echo "API_URL=${{ secrets.STAGING_API_URL || 'http://staging.example.com/api' }}" >> $GITHUB_ENV
+        echo "API_KEY=${{ secrets.STAGING_API_KEY || 'test-key' }}" >> $GITHUB_ENV
+        
+        # Set Telegram credentials if available
+        if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> $GITHUB_ENV
+          echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> $GITHUB_ENV
+        fi
+    
+    - name: Create reports directory
+      run: mkdir -p tests/reports
+    
+    - name: Run stress tests
+      id: stress-test
+      continue-on-error: true  # Continue even if tests fail
+      run: |
+        echo "Starting stress tests against $API_URL..."
+        node tests/run_stress_test.js --url "$API_URL" --key "$API_KEY"
+        echo "status=$?" >> $GITHUB_OUTPUT
+    
+    - name: Capture system metrics
+      if: always()
+      run: |
+        echo "=== System Metrics ==="
+        echo "CPU Usage:"
+        top -bn1 | head -15
+        echo "\nMemory Usage:"
+        free -h
+        echo "\nDisk Usage:"
+        df -h
+        
+        # Capture GPU metrics if available
+        if command -v nvidia-smi &> /dev/null; then
+          echo "\nGPU Metrics:"
+          nvidia-smi
+        fi
+    
+    - name: Upload test report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: stress-test-report-${{ github.run_id }}
+        path: |
+          tests/reports/*.json
+          tests/reports/*.html
+          tests/reports/*.md
+        retention-days: 7
+    
+    - name: Send test results
+      if: always()
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID || '' }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN || '' }}
+        message: |
+          *🧪 Stress Test Results*
+          
+          *Repository*: ${{ github.repository }}
+          *Environment*: Staging
+          *Status*: ${{ steps.stress-test.outcome == 'success' && '✅ Success' || '❌ Failed' }}
+          *Run URL*: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          *Report*: Available in GitHub Actions artifacts
+          
+          View full report in GitHub Actions.
+        parse_mode: markdown
+
+  # Main deployment workflow
+  deploy:
+    name: Deploy
+    needs: [test, docker]  # Remove stress-test from needs to break the cycle
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup deployment environment
+      id: setup
+      run: |
+        if [ "${{ github.ref == 'refs/heads/main' }}" = "true" ]; then
+          echo "TARGET_ENV=production" >> $GITHUB_ENV
+          echo "DEPLOY_HOST=${{ secrets.PRODUCTION_HOST }}" >> $GITHUB_ENV
+          echo "DEPLOY_USER=${{ secrets.PRODUCTION_USER }}" >> $GITHUB_ENV
+          echo "DEPLOY_PATH=/opt/jarvis-production" >> $GITHUB_ENV
+          echo "DOCKER_COMPOSE=${{ secrets.PROD_DOCKER_COMPOSE_PATH || '/opt/jarvis-production/docker-compose.yml' }}" >> $GITHUB_ENV
+          echo "SERVICE_URL=${{ secrets.PRODUCTION_URL || 'http://production.example.com' }}" >> $GITHUB_ENV
+        else
+          echo "TARGET_ENV=staging" >> $GITHUB_ENV
+          echo "DEPLOY_HOST=${{ secrets.STAGING_HOST }}" >> $GITHUB_ENV
+          echo "DEPLOY_USER=${{ secrets.STAGING_USER }}" >> $GITHUB_ENV
+          echo "DEPLOY_PATH=/opt/jarvis-staging" >> $GITHUB_ENV
+          echo "DOCKER_COMPOSE=${{ secrets.STAGING_DOCKER_COMPOSE_PATH || '/opt/jarvis-staging/docker-compose.yml' }}" >> $GITHUB_ENV
+          echo "SERVICE_URL=${{ secrets.STAGING_URL || 'http://staging.example.com' }}" >> $GITHUB_ENV
+        fi
+    
+    - name: Install SSH key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+    
+    - name: Deploy application
+      env:
+        HOST: ${{ env.DEPLOY_HOST }}
+        USER: ${{ env.DEPLOY_USER }}
+        DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+        DOCKER_COMPOSE: ${{ env.DOCKER_COMPOSE }}
+      run: |
+        echo "Deploying to ${{ env.TARGET_ENV }}..."
+        
+        # Create remote directory if it doesn't exist
+        ssh -o StrictHostKeyChecking=no $USER@$HOST "mkdir -p $DEPLOY_PATH"
+        
+        # Copy files to server
+        rsync -avz -e "ssh -o StrictHostKeyChecking=no" \
+          --exclude '.git' \
+          --exclude '.github' \
+          --exclude 'node_modules' \
+          --exclude '__pycache__' \
+          --exclude '.env*' \
+          ./ $USER@$HOST:$DEPLOY_PATH/
+        
+        # Run deployment commands
+        ssh -o StrictHostKeyChecking=no $USER@$HOST "
+          cd $DEPLOY_PATH && \
+          docker-compose -f $DOCKER_COMPOSE pull && \
+          docker-compose -f $DOCKER_COMPOSE up -d --build && \
+          docker system prune -f"
+    
+    - name: Run smoke tests
+      run: |
+        echo "Running smoke tests against ${{ env.SERVICE_URL }}..."
+        # Add your smoke test commands here
+        # Example: curl -sSf ${{ env.SERVICE_URL }}/health
+    
+    - name: Send deployment notification
+      if: always()
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID || '' }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN || '' }}
+        message: |
+          *🚀 ${{ env.TARGET_ENV == 'production' && 'Production' || 'Staging' }} Deployment Complete*  
+          
+          *Repository*: ${{ github.repository }}
+          *Environment*: ${{ env.TARGET_ENV == 'production' && 'Production' || 'Staging' }}
+          *Status*: ${{ steps.deploy.outcome == 'success' && '✅ Success' || '❌ Failed' }}
+          *Run URL*: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          View deployment details in GitHub Actions.
+        parse_mode: markdown
+        # Deployment is handled by the main deploy job

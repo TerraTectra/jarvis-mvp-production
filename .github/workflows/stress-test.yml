@@ -1,0 +1,129 @@
+name: "Jarvis Load Test"
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Run daily at 03:00 UTC
+  workflow_dispatch:  # Manual trigger
+    inputs:
+      environment:
+        description: 'Environment to test (staging/prod)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+
+env:
+  NODE_VERSION: '20.x'
+  NODE_ENV: test
+  CI: true
+  API_URL: http://localhost:3000      # Default, overridden below
+  API_KEY: local-dev-key
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    container:
+      image: node:20
+      options: --gpus all  # Enable GPU monitoring if needed
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            nvidia-utils-515 nvidia-smi htop procps curl
+
+      - name: Install Node.js dependencies
+        run: |
+          npm ci
+          npm install -g loadtest
+
+      - name: Configure environment
+        run: |
+          # Set environment variables
+          echo "NODE_ENV=$NODE_ENV" >> $GITHUB_ENV
+          echo "CI=$CI" >> $GITHUB_ENV
+          
+          # Set default environment if not provided
+          if [ -z "${{ github.event.inputs.environment }}" ]; then
+            ENV="staging"
+          else
+            ENV="${{ github.event.inputs.environment }}"
+          fi
+          
+          # Select API credentials by environment
+          if [ "$ENV" = "prod" ]; then
+            echo "API_URL=${{ secrets.PROD_API_URL || env.API_URL }}" >> $GITHUB_ENV
+            echo "API_KEY=${{ secrets.PROD_API_KEY || env.API_KEY }}" >> $GITHUB_ENV
+          else
+            echo "API_URL=${{ secrets.STAGING_API_URL || env.API_URL }}" >> $GITHUB_ENV
+            echo "API_KEY=${{ secrets.STAGING_API_KEY || env.API_KEY }}" >> $GITHUB_ENV
+          fi
+          
+          # Set Telegram credentials if they exist
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> $GITHUB_ENV
+            echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> $GITHUB_ENV
+          else
+            echo "TELEGRAM_BOT_TOKEN=" >> $GITHUB_ENV
+            echo "TELEGRAM_CHAT_ID=" >> $GITHUB_ENV
+          fi
+
+      - name: Create reports directory
+        run: mkdir -p tests/reports
+
+      - name: Run load test
+        id: load-test
+        continue-on-error: true
+        run: |
+          echo "Testing ${{ inputs.environment }}..."
+          echo "API_URL=$API_URL"
+          node tests/load_test.js --url "$API_URL" --key "$API_KEY"
+          if [ -f tests/reports/summary.md ]; then
+            REPORT=$(sed ':a;N;s/\n/ /g;ta' tests/reports/summary.md)
+            echo "report=$REPORT" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Capture GPU metrics
+        if: steps.load-test.conclusion == 'success'
+        run: |
+          nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv > tests/reports/gpu_metrics.csv
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: load-test-report-${{ github.run_id }}
+          path: tests/reports/
+          retention-days: 7
+
+      - name: Send Telegram notification
+        if: always()
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Skipping Telegram notification: missing credentials"
+            exit 0
+          fi
+          STATUS="${{ job.status }}"
+          EMOJI="$( [ "$STATUS" = 'success' ] && echo '✅' || echo '❌' )"
+          MESSAGE="${EMOJI} *Jarvis Load Test*: $STATUS\n"
+          MESSAGE+="Environment: ${{ inputs.environment }}\n"
+          MESSAGE+="Commit: ${{ github.sha }}\n"
+          MESSAGE+="Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n"
+          MESSAGE+="Report: ${{ steps.load-test.outputs.report || 'N/A' }}"
+          curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            -d chat_id="$TELEGRAM_CHAT_ID" \
+            -d parse_mode="Markdown" \
+            -d text="$MESSAGE"

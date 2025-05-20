@@ -4,9 +4,9 @@
 import os
 import logging
 import asyncio
-from typing import Dict, Any, Optional
+from .typing import Dict, Any, Optional
 import aiohttp
-from dotenv import load_dotenv
+from .dotenv import load_dotenv
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -53,11 +53,26 @@ async def submit_kwork_reply(order_id: str, message: str) -> Dict[str, Any]:
         
     Returns:
         Словарь с результатом операции
+        
+    Raises:
+        aiohttp.ClientError: В случае ошибки сетевого запроса
+        Exception: В случае других ошибок
     """
-    token = os.getenv("KWORK_TOKEN")
-    if not token:
+    # Проверяем наличие токена Kwork
+    kwork_token = os.getenv("KWORK_TOKEN")
+    if not kwork_token:
         error_msg = "KWORK_TOKEN не найден в переменных окружения"
         logger.error(error_msg)
+        # Логируем в базу данных
+        try:
+            from src.database.session import SessionLocal
+            from src.database.crud import log_system_event
+            db = SessionLocal()
+            log_system_event(db, "ERROR", error_msg, "kwork_submission")
+            db.close()
+        except Exception as e:
+            logger.error(f"Ошибка при логировании в БД: {e}")
+            
         return {
             "status": "error",
             "reason": error_msg,
@@ -68,7 +83,7 @@ async def submit_kwork_reply(order_id: str, message: str) -> Dict[str, Any]:
     data = {
         "project_id": order_id,
         "offer": message,
-        "token": token
+        "token": kwork_token
     }
     
     session = get_session()

@@ -1,0 +1,18 @@
+# Kwork API Integration
+httpx>=0.24.0  # Async HTTP client
+python-dotenv>=1.0.0  # For loading environment variables
+python-dateutil>=2.8.2  # For date parsing and manipulation
+
+# Database
+sqlalchemy[asyncio]>=2.0.0
+aiosqlite>=0.19.0
+
+# CLI
+click>=8.0.0
+typer[all]>=0.7.0  # Modern CLI framework
+rich>=12.0.0  # Beautiful terminal output
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.20.0
+pytest-cov>=4.0.0

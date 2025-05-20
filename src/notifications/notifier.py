@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
-from telegram import Bot
+from src.notifications.telegram import Bot
 
 # Настройка логирования
 logger = logging.getLogger(__name__)

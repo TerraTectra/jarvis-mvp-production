@@ -1,0 +1,47 @@
+{
+  "proxies": [
+    {
+      "protocol": "http",
+      "host": "proxy1.example.com",
+      "port": 8080,
+      "auth": {
+        "username": "user1",
+        "password": "pass1"
+      },
+      "enabled": false,
+      "lastUsed": null,
+      "successRate": 0,
+      "timeout": 5000
+    },
+    {
+      "protocol": "socks5",
+      "host": "proxy2.example.com",
+      "port": 1080,
+      "auth": {
+        "username": "user2",
+        "password": "pass2"
+      },
+      "enabled": false,
+      "lastUsed": null,
+      "successRate": 0,
+      "timeout": 5000
+    },
+    {
+      "protocol": "http",
+      "host": "proxy3.example.com",
+      "port": 3128,
+      "enabled": false,
+      "lastUsed": null,
+      "successRate": 0,
+      "timeout": 5000
+    }
+  ],
+  "settings": {
+    "maxRetries": 3,
+    "requestTimeout": 30000,
+    "rotateOnFailure": true,
+    "healthCheckInterval": 300000,
+    "maxConcurrentRequests": 5,
+    "retryDelay": 1000
+  }
+}

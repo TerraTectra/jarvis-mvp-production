@@ -4,15 +4,15 @@
 import os
 import asyncio
 import logging
-from typing import List, Dict, Any, Set, Optional
 from datetime import datetime
+from typing import List, Dict, Any, Set, Optional
 
 from dotenv import load_dotenv
-from integrations.kwork import fetch_kwork_orders
-from utils import generate_reply
-from database import SessionLocal
-from database.crud import create_or_update_order, create_reply, get_order_replies
-from notifications import NotificationLevel, get_notifier
+from src.integrations.kwork import fetch_kwork_orders
+from src.utils import generate_reply
+from src.database import SessionLocal
+from src.database.crud import create_or_update_order, create_reply, get_order_replies
+from src.notifications import NotificationLevel, get_notifier
 
 # Загрузка переменных окружения
 load_dotenv()

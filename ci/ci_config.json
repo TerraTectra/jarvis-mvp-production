@@ -1,0 +1,61 @@
+{
+    "python": {
+        "version": "3.9",
+        "test_command": "pytest -v --cov=src --cov-report=term-missing tests",
+        "lint_command": "ruff check --fix src tests",
+        "type_check_command": "mypy --strict src tests",
+        "format_command": "black --check --diff src tests && isort --check-only --diff src tests"
+    },
+    "docker": {
+        "enabled": true,
+        "build_command": "docker build -t jarvis-mvp .",
+        "test_command": "docker run --rm jarvis-mvp --help"
+    },
+    "notifications": {
+        "telegram": {
+            "enabled": true,
+            "config_file": ".env"
+        }
+    },
+    "paths": {
+        "source": "src",
+        "tests": "tests",
+        "reports": "ci/reports"
+    },
+    "checks": [
+        {
+            "name": "format",
+            "description": "Check code formatting with Black and isort",
+            "command": "black --check --diff src tests && isort --check-only --diff src tests",
+            "fix_command": "black src tests && isort src tests"
+        },
+        {
+            "name": "lint",
+            "description": "Lint code with Ruff",
+            "command": "ruff check --fix src tests",
+            "fix_command": "ruff check --fix src tests"
+        },
+        {
+            "name": "type_check",
+            "description": "Check type hints with mypy",
+            "command": "mypy --strict src tests"
+        },
+        {
+            "name": "test",
+            "description": "Run tests with pytest",
+            "command": "pytest -v --cov=src --cov-report=term-missing tests"
+        },
+        {
+            "name": "security",
+            "description": "Check for security vulnerabilities",
+            "command": "safety check --full-report"
+        },
+        {
+            "name": "dependencies",
+            "description": "Check for outdated dependencies",
+            "command": "pip list --outdated"
+        }
+    ],
+    "ci_providers": ["github", "gitlab", "bitbucket"],
+    "version": "1.0.0"
+}

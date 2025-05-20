@@ -1,0 +1,38 @@
+groups:
+- name: kwork-alerts
+  rules:
+  - alert: KworkProcessingErrors
+    expr: sum(increase(kwork_processing_errors_total[1h])) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Kwork processing errors detected"
+      description: "{{ $value }} errors in Kwork order processing in the last hour"
+
+  - alert: KworkHighErrorRate
+    expr: rate(kwork_processing_errors_total[5m]) / rate(kwork_orders_processed_total[5m]) > 0.1
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High Kwork processing error rate"
+      description: "Error rate is {{ $value | humanizePercentage }} of total orders"
+
+  - alert: KworkAPIDown
+    expr: up{job="kwork-api"} == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Kwork API is down"
+      description: "Kwork API has been down for more than 5 minutes"
+
+  - alert: KworkNoNewOrders
+    expr: rate(kwork_orders_processed_total[1h]) == 0
+    for: 2h
+    labels:
+      severity: warning
+    annotations:
+      summary: "No new Kwork orders processed"
+      description: "No Kwork orders have been processed in the last 2 hours"
