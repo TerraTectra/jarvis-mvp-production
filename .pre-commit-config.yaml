@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.1.0
+    rev: v0.11.10
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -8,14 +8,14 @@ repos:
         exclude: ^(migrations|tests/.*\.py)$
 
 -   repo: https://github.com/psf/black
-    rev: 23.7.0
+    rev: 25.1.0
     hooks:
     -   id: black
         language_version: python3
         exclude: ^(migrations|tests/.*\.py)$
 
 -   repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 6.0.1
     hooks:
     -   id: isort
         name: isort (python)
@@ -23,7 +23,7 @@ repos:
         exclude: ^(migrations|tests/.*\.py)$
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.5.1
+    rev: v1.15.0
     hooks:
     -   id: mypy
         additional_dependencies: [types-requests, types-pyyaml, types-python-dateutil]
@@ -34,17 +34,9 @@ repos:
     hooks:
     -   id: python-check-blanket-noqa
     -   id: python-check-blanket-type-ignore
-    -   id: python-use-type-annotations
-    -   id: python-no-log-w-format
     -   id: python-no-eval
-    -   id: python-no-ipdb
-    -   id: python-no-assert-on-string-literal
-    -   id: python-no-print-statement
-    -   id: python-no-wildcard-imports
-    -   id: python-use-type-annotations
-    -   id: python-use-type-annotations-strict
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v5.0.0
     hooks:
     -   id: check-added-large-files
         args: [--maxkb=1000]
