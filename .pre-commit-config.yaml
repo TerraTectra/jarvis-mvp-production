@@ -1,0 +1,74 @@
+repos:
+-   repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.1.0
+    hooks:
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+        exclude: ^(migrations|tests/.*\.py)$
+
+-   repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+    -   id: black
+        language_version: python3
+        exclude: ^(migrations|tests/.*\.py)$
+
+-   repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+    -   id: isort
+        name: isort (python)
+        args: [--profile=black, --filter-files]
+        exclude: ^(migrations|tests/.*\.py)$
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.1
+    hooks:
+    -   id: mypy
+        additional_dependencies: [types-requests, types-pyyaml, types-python-dateutil]
+        args: [--strict, --ignore-missing-imports, --implicit-optional]
+        exclude: ^(migrations|tests/.*\.py)$
+-   repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+    -   id: python-check-blanket-noqa
+    -   id: python-check-blanket-type-ignore
+    -   id: python-use-type-annotations
+    -   id: python-no-log-w-format
+    -   id: python-no-eval
+    -   id: python-no-ipdb
+    -   id: python-no-assert-on-string-literal
+    -   id: python-no-print-statement
+    -   id: python-no-wildcard-imports
+    -   id: python-use-type-annotations
+    -   id: python-use-type-annotations-strict
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    -   id: check-added-large-files
+        args: [--maxkb=1000]
+    -   id: check-ast
+    -   id: check-byte-order-marker
+    -   id: check-case-conflict
+    -   id: check-docstring-first
+    -   id: check-executables-have-shebangs
+    -   id: check-json
+    -   id: check-merge-conflict
+    -   id: check-symlinks
+    -   id: check-toml
+    -   id: check-vcs-permalinks
+    -   id: check-yaml
+    -   id: debug-statements
+    -   id: detect-private-key
+    -   id: end-of-file-fixer
+    -   id: mixed-line-ending
+        args: [--fix=lf]
+    -   id: name-tests-test
+    -   id: no-commit-to-branch
+    -   id: requirements-txt-fixer
+    -   id: trailing-whitespace
+ci:
+  autofix_prs: true
+  autoupdate_commit_msg: 'chore(pre-commit): update hooks'
+  autoupdate_schedule: monthly
