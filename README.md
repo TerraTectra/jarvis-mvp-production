@@ -85,3 +85,67 @@ MIT License
   <p>Разработано для автоматизации рутины</p>
   <p>Jarvis MVP © 2024</p>
 </div>
+
+## 🗺️ Yandex Maps Moscow organization scraper
+
+The project includes a Playwright-based scraper for collecting Moscow organizations from Yandex Maps:
+
+```bash
+python -m src.automation.yandex_maps_scraper --target-per-category 150
+```
+
+### Search categories
+
+The scraper searches these category synonym groups and stores the source query with every record:
+
+1. `Компьютерные клубы`, `Киберарена`
+2. `Дизайн-студии интерьеров`, `Архитектурное бюро`
+3. `Студии видеомонтажа`, `Видеопродакшн`
+
+For each category it tries to collect up to 150 organizations. If fewer visible Moscow results are available, it saves all organizations it can load.
+
+### Dependencies
+
+Install Python dependencies and the Chromium browser used by Playwright:
+
+```bash
+pip install -r requirements.txt
+playwright install chromium
+```
+
+### Output files
+
+Progress is saved incrementally after every organization so interrupted runs can be resumed:
+
+- JSON Lines progress: `data/yandex_maps_progress.jsonl`
+- CSV checkpoint: `data/yandex_maps_progress.csv`
+- Final deduplicated Excel export: `data/yandex_maps_moscow_organizations.xlsx`
+
+The final export is deduplicated by stable Yandex Maps URL when available, then normalized phone number, then normalized organization name plus address.
+
+### Useful command examples
+
+Run with a visible browser so you can manually observe CAPTCHA or layout changes:
+
+```bash
+python -m src.automation.yandex_maps_scraper --no-headless --target-per-category 100
+```
+
+Use shorter test limits while validating selectors:
+
+```bash
+python -m src.automation.yandex_maps_scraper --target-per-category 5 --min-delay 2 --max-delay 3
+```
+
+Write outputs to custom paths:
+
+```bash
+python -m src.automation.yandex_maps_scraper \
+  --progress-path data/custom_yandex_progress.jsonl \
+  --csv-path data/custom_yandex_progress.csv \
+  --excel-path data/custom_yandex_export.xlsx
+```
+
+### Anti-bot and data availability limitations
+
+Yandex Maps may show CAPTCHA or other anti-bot challenges, throttle requests, change result-card selectors, or hide fields such as phone, website, rating, or reviews. The scraper detects likely CAPTCHA pages, no-result pages, repeated unchanged sidebar counts, navigation timeouts, and missing fields gracefully. When a CAPTCHA appears, stop the run, solve it manually in a visible browser if appropriate, then rerun; already collected organizations remain in `data/yandex_maps_progress.jsonl`.
