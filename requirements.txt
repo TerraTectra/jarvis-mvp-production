@@ -19,3 +19,8 @@ passlib[bcrypt]>=1.7.42
 # Telegram Bot
 python-telegram-bot>=20.7
 requests>=2.31.0
+
+# Browser automation / exports
+playwright>=1.44.0
+pandas>=2.0.0
+openpyxl>=3.1.0
